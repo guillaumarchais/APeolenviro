@@ -361,7 +361,12 @@ if uploaded_files:
 
         for i, f in enumerate(uploaded_files):
             progress.progress((i) / n, text=f"Traitement : {f.name} ({i+1}/{n})")
-            pdf_bytes = f.read()
+            # CORRECTIF CURSEUR : on lit les bytes UNE SEULE FOIS ici et on les
+            # stocke dans une variable locale immuable (bytes). L'objet f de type
+            # UploadedFile possède un curseur interne — tout appel ultérieur à
+            # f.read() retournerait 0 bytes. Toute la suite travaille sur pdf_bytes.
+            f.seek(0)        # repositionner au cas où Streamlit aurait déjà lu partiellement
+            pdf_bytes = f.read()  # lecture unique et définitive
 
             # Extraire date depuis le nom du fichier si non fournie
             from core.extractor import extract_date_from_filename
