@@ -127,28 +127,99 @@ THEMES_NORM = {
 
 # ─── Extraction de texte depuis bytes ────────────────────────────────────────
 
-def extract_text_from_bytes(pdf_bytes: bytes) -> tuple[str, bool]:
+def extract_text_from_bytes(pdf_bytes: bytes) -> tuple[str, bool, str]:
     """
     Extrait le texte d'un PDF fourni en bytes (issu d'un st.file_uploader).
-    Retourne (texte_brut, succès).
-    Le booléen succès est False si le PDF semble être un scan.
+    Retourne (texte_brut, succès, message_diagnostic).
+
+    Corrections clés par rapport à la version initiale :
+
+    1. CURSEUR BytesIO : après tout appel .read() sur un UploadedFile Streamlit,
+       le curseur interne est en fin de flux. On crée systématiquement un nouveau
+       BytesIO depuis les bytes bruts ET on appelle seek(0) avant toute ouverture
+       par pdfplumber, ce qui garantit que le flux est lu depuis le début.
+
+    2. HEURISTIQUE DE DÉTECTION SCAN améliorée : l'ancienne version (< 100 chars
+       en moyenne) rejetait des arrêtés courts ou comportant des pages de garde
+       quasi-vides. On compte maintenant le nombre total de caractères alphabétiques
+       sur l'ensemble du document — un seuil absolu de 200 caractères est plus
+       fiable qu'une moyenne par page.
+
+    3. FALLBACK pypdf : si pdfplumber échoue (PDF corrompu, encodage non standard),
+       on tente une seconde extraction avec pypdf, qui gère mieux certains PDFs
+       administratifs anciens générés par des logiciels bureautiques obsolètes.
     """
+
+    # ── Tentative 1 : pdfplumber ─────────────────────────────────────────────
     try:
+        # CORRECTIF CURSEUR : toujours recréer un BytesIO frais depuis les bytes
+        # bruts, et appeler seek(0) explicitement — c'est la ligne qui corrige
+        # le bug principal.
         buf = io.BytesIO(pdf_bytes)
+        buf.seek(0)  # ← correctif essentiel : repositionner le curseur au début
+
         pages_text = []
+        n_pages = 0
         with pdfplumber.open(buf) as pdf:
+            n_pages = len(pdf.pages)
             for page in pdf.pages:
-                t = page.extract_text()
-                if t:
+                # extract_text() avec layout=True donne de meilleurs résultats
+                # sur les PDFs avec des colonnes ou des tableaux
+                t = page.extract_text(layout=False)
+                if t and t.strip():
                     pages_text.append(t)
 
-        combined = "\n".join(pages_text)
-        # Heuristique : < 100 caractères par page → probablement scanné
-        avg = len(combined) / max(1, len(pages_text))
-        return combined, avg >= 100
+        combined = "\n\x0c\n".join(pages_text)  # \x0c = saut de page pour split_into_passages
+
+        # HEURISTIQUE AMÉLIORÉE : compter les caractères alphabétiques réels
+        # (pas les espaces ni la ponctuation) sur tout le document.
+        # Un PDF nativement numérique d'un arrêté a forcément plus de 200 lettres.
+        alpha_count = sum(1 for c in combined if c.isalpha())
+
+        if alpha_count >= 200:
+            return combined, True, f"pdfplumber OK — {n_pages} pages, {alpha_count} caractères"
+
+        # Texte trop pauvre : tenter le fallback avant de conclure à un scan
+        diag_pdfplumber = f"pdfplumber : {alpha_count} caractères alpha sur {n_pages} pages (insuffisant)"
 
     except Exception as e:
-        return "", False
+        diag_pdfplumber = f"pdfplumber exception : {e}"
+        combined = ""
+
+    # ── Tentative 2 : fallback pypdf ─────────────────────────────────────────
+    # pypdf gère mieux certains encodages non standard fréquents dans les
+    # documents produits par des logiciels administratifs français (ex. acrobat
+    # writer < 2010, certains PDF/A produits par ELISE ou Pastell).
+    try:
+        import pypdf
+        buf2 = io.BytesIO(pdf_bytes)
+        buf2.seek(0)  # ← même correctif curseur
+
+        reader = pypdf.PdfReader(buf2)
+        pages_text_fb = []
+        for page in reader.pages:
+            t = page.extract_text()
+            if t and t.strip():
+                pages_text_fb.append(t)
+
+        combined_fb = "\n\x0c\n".join(pages_text_fb)
+        alpha_fb = sum(1 for c in combined_fb if c.isalpha())
+
+        if alpha_fb >= 200:
+            return combined_fb, True, f"pypdf fallback OK — {alpha_fb} caractères"
+
+        # Les deux extracteurs ont échoué : PDF probablement scanné
+        return combined_fb or combined, False, (
+            f"PDF probablement scanné (OCR nécessaire). "
+            f"{diag_pdfplumber} | pypdf : {alpha_fb} caractères alpha"
+        )
+
+    except ImportError:
+        # pypdf non installé : retourner ce qu'on a avec pdfplumber
+        return combined, False, f"PDF non extractible. {diag_pdfplumber} (pypdf non disponible)"
+
+    except Exception as e:
+        return combined, False, f"PDF non extractible. {diag_pdfplumber} | pypdf exception : {e}"
 
 
 # ─── Segmentation en passages logiques ────────────────────────────────────────
@@ -216,13 +287,13 @@ def parse_arrete_from_bytes(pdf_bytes: bytes, metadata: dict,
     if active_themes is None:
         active_themes = list(THEMES_FR.keys())
 
-    raw_text, ok = extract_text_from_bytes(pdf_bytes)
+    raw_text, ok, diag = extract_text_from_bytes(pdf_bytes)
 
     if not ok or not raw_text.strip():
         return {
             **metadata,
             "extraction_ok": False,
-            "error_msg": "PDF scanné ou texte non extractible (OCR nécessaire)",
+            "error_msg": diag,  # message de diagnostic précis affiché dans l'UI
             "themes_found": [],
             "total_passages_with_themes": 0,
             "passages": [],
