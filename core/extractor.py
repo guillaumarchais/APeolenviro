@@ -49,9 +49,7 @@ THEMES = {
             "mortalité avifaune", "collision oiseaux",
         ],
         "weak": [
-            "faune", "espèces protégées", "habitat", "natura 2000",
-            "sensibilité faunistique", "suivi faune", "bilan ornithologique",
-            "impacts sur la faune", "mesures de réduction faune",
+            "suivi avifaunistique", "bilan ornithologique",
         ],
     },
     "chiropteres": {
@@ -67,9 +65,7 @@ THEMES = {
             "mortalité chiroptères", "directive habitats faune flore",
         ],
         "weak": [
-            "faune", "espèces protégées", "habitat", "natura 2000",
-            "espèces nocturnes", "suivi faune",
-            "impacts sur la faune", "mesures de réduction faune",
+            "nocturnes", "suivi", "mesures de réduction",
         ],
     },
     "zones_humides": {
@@ -83,12 +79,12 @@ THEMES = {
             "arrêté loi sur l'eau", "autorisation loi sur l'eau",
             "coefficient d'humidité", "hydromorphie",
             "compensation zones humides", "recréation zone humide",
-            "SDAGE", "masse d'eau",
+            "SDAGE", "masse d'eau", "pédologique"
         ],
         "weak": [
-            "milieu aquatique", "biodiversité", "flore", "végétation",
+            "milieu aquatique", "flore", "végétation",
             "espèces hygrophiles", "milieux humides",
-            "impacts sur les milieux", "mesures compensatoires",
+            "impacts sur les milieux",
         ],
     },
     "paysage": {
@@ -97,17 +93,15 @@ THEMES = {
             "intégration paysagère", "impact paysager", "impact visuel",
             "covisibilité", "co-visibilité", "intervisibilité",
             "aire d'étude paysagère", "photomontage", "simulation visuelle",
-            "monument historique", "site classé", "site inscrit",
-            "ZPPAUP", "AVAP", "site patrimonial remarquable",
+            "monument historique", "site classé", "site inscrit", "site patrimonial remarquable",
             "ABF", "architecte des bâtiments de france",
             "éloignement visuel", "point de vue", "perception visuelle",
             "mesures paysagères", "haie bocagère", "traitement visuel",
             "balisage diurne", "balisage nocturne",
-            "couleur des éoliennes", "ombre portée",
+            "couleur des éoliennes", "ombre portée", "surplom", "saturation",
         ],
         "weak": [
             "patrimoine", "tourisme", "cadre de vie", "riverains",
-            "aménagement du territoire", "urbanisme",
             "plan local d'urbanisme", "PLU", "SCoT",
             "charte paysagère",
         ],
