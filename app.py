@@ -435,50 +435,13 @@ from core.reporter import build_aggregation, build_summary_table, build_html_rep
 # ── Générateur de rapport Word ─────────────────────────────────────────────────
 def _generate_word_report(results: list) -> bytes | None:
     """
-    Génère un rapport Word structuré par thème à partir des résultats d'analyse.
-    Utilise le script Node.js generate_word.js (docx npm) embarqué dans l'app.
+    Génère un rapport Word structuré par thème via python-docx (pur Python).
     Retourne les bytes du .docx, ou None en cas d'erreur.
-
-    Fonctionnement :
-      1. Sérialise les résultats en JSON dans un fichier temporaire
-      2. Lance generate_word.js via Node.js avec le chemin de sortie
-      3. Lit et retourne les bytes du .docx généré
-      4. Nettoie les fichiers temporaires
     """
-    script_path = Path(__file__).parent / "generate_word.js"
-    if not script_path.exists():
-        return None
-
     try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            data_path = os.path.join(tmpdir, "word_data.json")
-            out_path  = os.path.join(tmpdir, "rapport.docx")
-
-            # Préparer les données — on sérialise uniquement ce dont le script a besoin
-            region = results[0].get("region", "") if results else ""
-            payload = {
-                "region":  region,
-                "results": results,
-            }
-            with open(data_path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False)
-
-            # Le script lit word_data.json depuis /tmp par défaut ;
-            # on écrase le chemin en copiant dans /tmp puis on appelle le script
-            import shutil
-            shutil.copy(data_path, "/tmp/word_data.json")
-
-            result = subprocess.run(
-                ["node", str(script_path), out_path],
-                capture_output=True, text=True, timeout=60,
-            )
-            if result.returncode != 0 or not os.path.exists(out_path):
-                return None
-
-            with open(out_path, "rb") as f:
-                return f.read()
-
-    except Exception:
+        from core.word_export import generate_word_report
+        return generate_word_report(results)
+    except Exception as e:
         return None
 
 # ── État de session ────────────────────────────────────────────────────────────
