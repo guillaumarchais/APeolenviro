@@ -39,9 +39,9 @@ THEMES = {
     "avifaune": {
         "strong": [
             "avifaune", "avifaunistique", "oiseaux", "rapaces", "rapace",
-            "milan royal", "milan noir", "busard", "outarde", "cigogne",
-            "grue cendrée", "aigle", "faucon", "buse", "héron",
-            "espèces nicheuses", "espèces migratoires", "couloir migratoire",
+            "milan royal", "milan noir", "busard", "busards", "outarde", "cigogne",
+            "grue cendrée", "aigle", "faucon", "buse", "héron", "vautour",
+            "espèces nicheuses", "espèces migratrices", "couloir migratoire",
             "migration", "nidification", "effarouchement", "bridage avifaune",
             "suivi ornithologique", "ornithologique", "ornithologie",
             "liste rouge oiseaux", "directive oiseaux",
@@ -57,15 +57,15 @@ THEMES = {
             "chiroptère", "chiroptères", "chauve-souris", "chauves-souris",
             "pipistrelle", "noctule", "sérotine", "murin", "grand murin",
             "rhinolophe", "vespertilion", "barbastelle", "oreillard",
-            "minioptère", "tadaride",
+            "minioptère", "molosse",
             "activité chiroptérologique", "chiroptérologique",
             "gîte", "hibernation", "transit", "chasse chiroptères",
-            "bridage chiroptères", "bridage acoustique",
+            "bridage chiroptères", "bridage dynamique",
             "détection ultrasonique", "détecteur ultrasons",
-            "mortalité chiroptères", "directive habitats faune flore",
+            "mortalité chiroptères",
         ],
         "weak": [
-            "nocturnes", "suivi", "mesures de réduction",
+            "nocturnes",
         ],
     },
     "zones_humides": {
@@ -84,7 +84,6 @@ THEMES = {
         "weak": [
             "milieu aquatique", "flore", "végétation",
             "espèces hygrophiles", "milieux humides",
-            "impacts sur les milieux",
         ],
     },
     "paysage": {
@@ -98,7 +97,7 @@ THEMES = {
             "éloignement visuel", "point de vue", "perception visuelle",
             "mesures paysagères", "haie bocagère", "traitement visuel",
             "balisage diurne", "balisage nocturne",
-            "couleur des éoliennes", "ombre portée", "surplom", "saturation",
+            "couleur des éoliennes", "ombre portée", "surplomb", "saturation",
         ],
         "weak": [
             "patrimoine", "tourisme", "cadre de vie", "riverains",
