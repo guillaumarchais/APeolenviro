@@ -17,234 +17,353 @@ st.set_page_config(
 # ── Injection du CSS personnalisé ─────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
-/* ── Palette & variables ── */
+/* ══════════════════════════════════════════════════
+   PALETTE — fond blanc pur, encre foncée, accents nets
+   ══════════════════════════════════════════════════ */
 :root {
-  --vert:     #1B4D3E;
-  --vert-mid: #2D7A5F;
-  --vert-clair: #A8D5C2;
-  --creme:    #F7F4EE;
-  --encre:    #1A1A1A;
-  --gris:     #6B6B6B;
-  --bordure:  #D8D3C8;
-  --avifaune:  #1565C0;
-  --chiro:     #6A1B9A;
-  --humides:   #00695C;
-  --paysage:   #E65100;
+  --blanc:      #FFFFFF;
+  --fond:       #F8F9FA;
+  --encre:      #111827;
+  --encre-mid:  #374151;
+  --gris:       #6B7280;
+  --gris-clair: #E5E7EB;
+  --bordure:    #D1D5DB;
+
+  --vert:       #166534;
+  --vert-mid:   #15803D;
+  --vert-fond:  #F0FDF4;
+  --vert-bord:  #BBF7D0;
+
+  /* Couleurs thématiques — saturées, lisibles sur fond blanc */
+  --avi:   #1D4ED8;   /* bleu vif       — avifaune    */
+  --chi:   #7C3AED;   /* violet         — chiroptères */
+  --hum:   #0F766E;   /* teal           — zones humides */
+  --pay:   #C2410C;   /* orange brûlé   — paysage     */
+
+  /* Fonds surlignés pour les mots-clés (très pâles) */
+  --avi-hl:  #DBEAFE;
+  --chi-hl:  #EDE9FE;
+  --hum-hl:  #CCFBF1;
+  --pay-hl:  #FFEDD5;
 }
 
-/* ── Reset & base ── */
+/* ══════════════════════════════════════════════════
+   BASE — police et fond
+   ══════════════════════════════════════════════════ */
 html, body, [class*="css"] {
-  font-family: 'Source Serif 4', Georgia, serif;
-  background-color: var(--creme) !important;
-  color: var(--encre);
+  font-family: 'DM Sans', system-ui, sans-serif !important;
+  background-color: var(--fond) !important;
+  color: var(--encre) !important;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
-/* ── En-tête principal ── */
+/* ══════════════════════════════════════════════════
+   EN-TÊTE
+   ══════════════════════════════════════════════════ */
 .entete {
   background: var(--vert);
   color: white;
-  padding: 2.5rem 3rem 2rem;
+  padding: 2rem 2.5rem 1.8rem;
   margin: -1rem -1rem 2rem -1rem;
-  border-bottom: 4px solid var(--vert-mid);
+  border-bottom: 3px solid var(--vert-mid);
 }
 .entete h1 {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  font-size: 2.1rem;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.4rem;
-  line-height: 1.2;
+  font-family: 'DM Serif Display', Georgia, serif !important;
+  font-weight: 400;
+  font-size: 1.9rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.35rem;
+  line-height: 1.25;
+  color: white !important;
 }
 .entete p {
-  font-family: 'Source Serif 4', serif;
-  font-style: italic;
-  font-weight: 300;
-  font-size: 1.05rem;
-  opacity: 0.85;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.92rem;
+  opacity: 0.82;
   margin: 0;
+  color: white !important;
 }
 
-/* ── Cartes thématiques ── */
-.carte-theme {
-  border-radius: 10px;
-  padding: 1.1rem 1.3rem;
-  margin-bottom: 0.8rem;
-  border-left: 5px solid;
-  background: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-}
-.carte-avifaune  { border-color: var(--avifaune); }
-.carte-chiro     { border-color: var(--chiro); }
-.carte-humides   { border-color: var(--humides); }
-.carte-paysage   { border-color: var(--paysage); }
-
-.carte-theme .label {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.6;
-  margin-bottom: 0.2rem;
-}
-.carte-theme .chiffre {
-  font-family: 'Syne', sans-serif;
-  font-weight: 800;
-  font-size: 2rem;
-  line-height: 1;
-}
-.carte-theme .sous {
-  font-size: 0.82rem;
-  font-style: italic;
-  color: var(--gris);
-  margin-top: 0.15rem;
-}
-
-/* ── Carte d'extrait ── */
+/* ══════════════════════════════════════════════════
+   CARTE D'EXTRAIT  — cœur de l'interface
+   ══════════════════════════════════════════════════ */
 .extrait-card {
-  background: white;
+  background: var(--blanc);
   border: 1px solid var(--bordure);
-  border-radius: 10px;
-  padding: 1.2rem 1.4rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  transition: box-shadow 0.15s;
 }
-.extrait-card .meta {
-  font-family: 'Syne', sans-serif;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--gris);
-  margin-bottom: 0.6rem;
+.extrait-card:hover {
+  box-shadow: 0 3px 10px rgba(0,0,0,0.11);
 }
-.extrait-card .article-tag {
-  display: inline-block;
-  background: var(--creme);
+
+/* Bande colorée gauche selon thème dominant */
+.extrait-card.th-avifaune  { border-left: 4px solid var(--avi); }
+.extrait-card.th-chiropteres { border-left: 4px solid var(--chi); }
+.extrait-card.th-zones_humides { border-left: 4px solid var(--hum); }
+.extrait-card.th-paysage   { border-left: 4px solid var(--pay); }
+
+/* En-tête de la carte */
+.ec-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--gris-clair);
+  flex-wrap: wrap;
+}
+
+/* Référence d'article */
+.ec-art {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--encre-mid);
+  background: var(--fond);
   border: 1px solid var(--bordure);
   border-radius: 4px;
-  padding: 1px 7px;
-  font-size: 0.8rem;
-  font-family: 'Syne', sans-serif;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* Badge thème */
+.ec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
   font-weight: 600;
-  margin-right: 6px;
-}
-.extrait-card blockquote {
-  border-left: 3px solid var(--vert-clair);
-  margin: 0.5rem 0 0;
-  padding-left: 1rem;
-  font-style: italic;
-  font-size: 0.9rem;
-  line-height: 1.65;
-  color: #333;
-}
-.score-pill {
-  display: inline-block;
-  background: var(--creme);
-  border: 1px solid var(--bordure);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 2px 9px;
   border-radius: 20px;
-  padding: 1px 10px;
-  font-size: 0.75rem;
-  font-family: 'Syne', sans-serif;
+  color: white;
+  white-space: nowrap;
+}
+.ec-badge.avi { background: var(--avi); }
+.ec-badge.chi { background: var(--chi); }
+.ec-badge.hum { background: var(--hum); }
+.ec-badge.pay { background: var(--pay); }
+
+/* Score */
+.ec-score {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
   color: var(--gris);
-  float: right;
+  white-space: nowrap;
+}
+.ec-score span {
+  font-weight: 600;
+  color: var(--encre-mid);
 }
 
-/* ── Badge de thème ── */
-.badge { display: inline-block; border-radius: 20px; padding: 2px 10px;
-         font-size: 0.75rem; font-family: 'Syne', sans-serif; font-weight: 700;
-         letter-spacing: 0.04em; color: white; margin-right: 4px; }
-.badge-avifaune  { background: var(--avifaune); }
-.badge-chiro     { background: var(--chiro); }
-.badge-humides   { background: var(--humides); }
-.badge-paysage   { background: var(--paysage); }
+/* Corps de la carte — texte extrait */
+.ec-body {
+  padding: 10px 14px 12px;
+}
 
-/* ── Sidebar ── */
+/* Conteneur du texte avec limitation à 5 lignes */
+.ec-text-wrap {
+  position: relative;
+}
+.ec-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.895rem;
+  line-height: 1.7;
+  color: var(--encre);
+  /* 5 lignes exactement : line-height 1.7 × 0.895rem × 5 */
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+.ec-text.expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+/* Bouton "Voir plus / Voir moins" */
+.ec-toggle {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--vert-mid);
+  cursor: pointer;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.ec-toggle:hover { text-decoration: underline; }
+
+/* Surlignage des mots-clés dans le texte */
+.hl-avi  { background: var(--avi-hl);  border-radius: 2px; padding: 0 2px; }
+.hl-chi  { background: var(--chi-hl);  border-radius: 2px; padding: 0 2px; }
+.hl-hum  { background: var(--hum-hl);  border-radius: 2px; padding: 0 2px; }
+.hl-pay  { background: var(--pay-hl);  border-radius: 2px; padding: 0 2px; }
+
+/* En-tête de document */
+.doc-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 20px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--vert-bord);
+}
+.doc-header .doc-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.05rem;
+  color: var(--vert);
+  font-weight: 400;
+}
+.doc-header .doc-meta {
+  font-size: 0.78rem;
+  color: var(--gris);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ══════════════════════════════════════════════════
+   NOTE MÉTHODOLOGIQUE
+   ══════════════════════════════════════════════════ */
+.note-methodo {
+  background: var(--vert-fond);
+  border: 1px solid var(--vert-bord);
+  border-left: 4px solid var(--vert-mid);
+  border-radius: 6px;
+  padding: 0.8rem 1.1rem;
+  font-size: 0.84rem;
+  color: var(--vert);
+  margin-bottom: 1.4rem;
+}
+
+/* ══════════════════════════════════════════════════
+   BARRES DE PROGRESSION
+   ══════════════════════════════════════════════════ */
+.barre-theme {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 7px;
+}
+.barre-theme .nom {
+  font-size: 0.82rem; font-weight: 600; width: 115px; color: var(--encre-mid);
+}
+.barre-theme .piste {
+  flex: 1; background: var(--gris-clair); border-radius: 3px; height: 7px; overflow: hidden;
+}
+.barre-theme .rempli { height: 7px; border-radius: 3px; }
+.barre-theme .val {
+  font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--gris); width: 32px; text-align: right;
+}
+
+/* ══════════════════════════════════════════════════
+   SIDEBAR
+   ══════════════════════════════════════════════════ */
 [data-testid="stSidebar"] {
-  background: var(--vert) !important;
+  background: #1A2E1F !important;
 }
-[data-testid="stSidebar"] * { color: white !important; }
-[data-testid="stSidebar"] .stSelectbox label,
-[data-testid="stSidebar"] .stMultiSelect label,
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] span { color: rgba(255,255,255,0.85) !important; }
-[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.2) !important; }
+[data-testid="stSidebar"] * { color: #E8F5E9 !important; }
+[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.15) !important; }
+[data-testid="stSidebar"] .stSelectbox > div,
+[data-testid="stSidebar"] .stMultiSelect > div {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.2) !important;
+}
 
-/* ── Boutons ── */
+/* ══════════════════════════════════════════════════
+   BOUTONS
+   ══════════════════════════════════════════════════ */
 .stButton > button {
   background: var(--vert) !important;
   color: white !important;
-  font-family: 'Syne', sans-serif !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.04em !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 600 !important;
   border: none !important;
   border-radius: 6px !important;
-  padding: 0.5rem 1.5rem !important;
+  padding: 0.45rem 1.3rem !important;
+  font-size: 0.88rem !important;
+  letter-spacing: 0.01em !important;
 }
 .stButton > button:hover { background: var(--vert-mid) !important; }
 
-/* ── Download button ── */
 .stDownloadButton > button {
-  background: transparent !important;
-  color: var(--vert) !important;
-  border: 2px solid var(--vert) !important;
-  font-family: 'Syne', sans-serif !important;
-  font-weight: 700 !important;
-}
-
-/* ── Upload zone ── */
-[data-testid="stFileUploader"] {
   background: white !important;
-  border: 2px dashed var(--bordure) !important;
-  border-radius: 10px !important;
-  padding: 1rem !important;
-}
-
-/* ── Métriques ── */
-[data-testid="metric-container"] {
-  background: white;
-  border: 1px solid var(--bordure);
-  border-radius: 10px;
-  padding: 1rem;
-}
-
-/* ── Tabs ── */
-.stTabs [data-baseweb="tab-list"] { gap: 6px; }
-.stTabs [data-baseweb="tab"] {
-  font-family: 'Syne', sans-serif !important;
+  color: var(--vert) !important;
+  border: 1.5px solid var(--vert) !important;
+  font-family: 'DM Sans', sans-serif !important;
   font-weight: 600 !important;
   font-size: 0.88rem !important;
-  letter-spacing: 0.04em !important;
 }
 
-/* ── Section titres ── */
-h2, h3 {
-  font-family: 'Syne', sans-serif !important;
-  font-weight: 700 !important;
-}
-
-/* ── Alerte info ── */
-.note-methodo {
-  background: #EDF4F1;
-  border: 1px solid var(--vert-clair);
-  border-left: 4px solid var(--vert);
+/* ══════════════════════════════════════════════════
+   MÉTRIQUES & ONGLETS
+   ══════════════════════════════════════════════════ */
+[data-testid="metric-container"] {
+  background: var(--blanc);
+  border: 1px solid var(--bordure);
   border-radius: 8px;
-  padding: 0.9rem 1.2rem;
-  font-size: 0.87rem;
-  font-style: italic;
-  color: var(--vert);
-  margin-bottom: 1.5rem;
+  padding: 1rem 1.1rem;
+}
+[data-testid="metric-container"] label {
+  font-size: 0.78rem !important;
+  color: var(--gris) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+}
+[data-testid="metric-container"] [data-testid="stMetricValue"] {
+  font-family: 'DM Serif Display', serif !important;
+  font-size: 2rem !important;
+  color: var(--encre) !important;
 }
 
-/* ── Barre de progression thème ── */
-.barre-theme { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.barre-theme .nom { font-family: 'Syne', sans-serif; font-size: 0.82rem; width: 110px; font-weight: 600; }
-.barre-theme .piste { flex: 1; background: var(--creme); border-radius: 4px; height: 8px; overflow: hidden; }
-.barre-theme .rempli { height: 8px; border-radius: 4px; }
-.barre-theme .val { font-family: 'Syne', sans-serif; font-size: 0.8rem; color: var(--gris); width: 40px; text-align: right; }
+.stTabs [data-baseweb="tab-list"] { gap: 4px; border-bottom: 2px solid var(--gris-clair) !important; }
+.stTabs [data-baseweb="tab"] {
+  font-family: 'DM Sans', sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 0.86rem !important;
+  color: var(--gris) !important;
+  padding: 8px 16px !important;
+  border-radius: 6px 6px 0 0 !important;
+}
+.stTabs [aria-selected="true"] {
+  color: var(--vert) !important;
+  border-bottom: 2px solid var(--vert) !important;
+}
+
+h2, h3 {
+  font-family: 'DM Serif Display', Georgia, serif !important;
+  font-weight: 400 !important;
+  color: var(--encre) !important;
+}
+
+/* Upload zone */
+[data-testid="stFileUploader"] {
+  background: var(--blanc) !important;
+  border: 2px dashed var(--bordure) !important;
+  border-radius: 8px !important;
+}
+
+/* ══════════════════════════════════════════════════
+   JAVASCRIPT — expand/collapse des extraits
+   ══════════════════════════════════════════════════ */
 </style>
+
+<script>
+function toggleExtrait(btn) {
+  const txt = btn.previousElementSibling;
+  const expanded = txt.classList.toggle('expanded');
+  btn.textContent = expanded ? '▲ Réduire' : '▼ Voir tout';
+}
+</script>
 """, unsafe_allow_html=True)
 
 # ── Imports après configuration ────────────────────────────────────────────────
@@ -482,15 +601,56 @@ if st.session_state.analysed and st.session_state.results:
                 options=["Toutes"] + sorted(set(r.get("region","") for r in results_ok))
             )
 
-        # Collecte des passages à afficher
-        icons = {"avifaune": "🦅", "chiropteres": "🦇",
-                 "zones_humides": "💧", "paysage": "🌄"}
-        badge_css = {"avifaune": "badge-avifaune", "chiropteres": "badge-chiro",
-                     "zones_humides": "badge-humides", "paysage": "badge-paysage"}
-        border_css = {"avifaune": "carte-avifaune", "chiropteres": "carte-chiro",
-                      "zones_humides": "carte-humides", "paysage": "carte-paysage"}
+        # ── Fonctions utilitaires pour le rendu ──────────────────────────────
+        icons      = {"avifaune": "🦅", "chiropteres": "🦇",
+                      "zones_humides": "💧", "paysage": "🌄"}
+        badge_cls  = {"avifaune": "avi", "chiropteres": "chi",
+                      "zones_humides": "hum", "paysage": "pay"}
+        hl_cls     = {"avifaune": "hl-avi", "chiropteres": "hl-chi",
+                      "zones_humides": "hl-hum", "paysage": "hl-pay"}
+        th_cls     = {"avifaune": "th-avifaune", "chiropteres": "th-chiropteres",
+                      "zones_humides": "th-zones_humides", "paysage": "th-paysage"}
 
+        # Mots-clés forts normalisés, pour le surlignage dans le texte
+        from core.extractor import THEMES, normalize as norm_kw
+
+        def highlight_keywords(text: str, themes_scores: dict) -> str:
+            """
+            Surligne dans le texte les mots-clés des thèmes détectés.
+            On surligne uniquement les mots-clés FORTS du thème dominant
+            (les faibles sont partagés entre thèmes et créeraient de la confusion).
+            Le surlignage est insensible à la casse et aux accents.
+            """
+            import re as _re
+            result = text
+            dom = max(themes_scores, key=themes_scores.get) if themes_scores else None
+            if not dom:
+                return result
+
+            cls = hl_cls.get(dom, "")
+            # Trier par longueur décroissante pour surligner d'abord les expressions
+            # longues (évite de surligner "milan" dans "milan royal" partiellement)
+            kws = sorted(THEMES[dom]["strong"], key=len, reverse=True)
+
+            for kw in kws:
+                # Regex insensible à la casse, frontière de mot
+                pattern = _re.compile(
+                    r'(?<![&;])(' + _re.escape(kw) + r')',
+                    _re.IGNORECASE
+                )
+                # On ne surligne que si le mot-clé apparaît dans le texte
+                if pattern.search(result):
+                    result = pattern.sub(
+                        rf'<mark class="{cls}">\1</mark>',
+                        result,
+                        count=5   # limiter à 5 occurrences max par mot-clé
+                    )
+            return result
+
+        # ── Rendu des extraits ────────────────────────────────────────────────
+        card_id     = 0
         passages_affiches = 0
+
         for doc in results_ok:
             if region_filtre != "Toutes" and doc.get("region") != region_filtre:
                 continue
@@ -502,28 +662,63 @@ if st.session_state.analysed and st.session_state.results:
             if not doc_passages:
                 continue
 
-            # En-tête du document
-            date_str = f"{doc.get('month','?')}/{doc.get('year','?')}" if doc.get('year') else "date inconnue"
-            st.markdown(f"#### 📄 {doc.get('text','')[:80]} — *{doc.get('region','')} · {date_str}*")
+            # ── En-tête du document ──
+            date_str = (
+                f"{doc.get('month','?')}/{doc.get('year','?')}"
+                if doc.get('year') else "date inconnue"
+            )
+            titre = (doc.get("text") or doc.get("filename") or "")[:90]
+            st.markdown(f"""
+            <div class="doc-header">
+              <span class="doc-title">📄 {titre}</span>
+              <span class="doc-meta">{doc.get('region','')} · {date_str}</span>
+            </div>
+            """, unsafe_allow_html=True)
 
-            for p in doc_passages[:10]:  # Limiter à 10 passages par doc pour la lisibilité
-                dom = p.get("dominant_theme", "")
-                themes_badges = " ".join(
-                    f'<span class="badge {badge_css.get(th,"")}">{icons.get(th,"")} {THEMES_FR.get(th,th)}</span>'
-                    for th in p.get("themes", {})
+            for p in doc_passages[:15]:
+                dom    = p.get("dominant_theme", "")
+                themes = p.get("themes", {})
+                score  = themes.get(dom, 0)
+                card_id += 1
+
+                # Badges pour tous les thèmes du passage
+                badges_html = " ".join(
+                    '<span class="ec-badge {cls}">{ico} {lbl}</span>'.format(
+                        cls=badge_cls.get(th, ""),
+                        ico=icons.get(th, ""),
+                        lbl=THEMES_FR.get(th, th),
+                    )
+                    for th in themes
                 )
-                art = f'<span class="article-tag">{p["article_ref"]}</span>' if p.get("article_ref") else ""
-                score = p.get("themes", {}).get(dom, 0)
-                text_esc = (p.get("text","") or "").replace("<","&lt;").replace(">","&gt;")
-                text_esc = text_esc[:500] + ("…" if len(text_esc) > 500 else "")
+
+                # Référence d'article
+                art_html = (
+                    f'<span class="ec-art">{p["article_ref"]}</span>'
+                    if p.get("article_ref") else ""
+                )
+
+                # Texte avec surlignage des mots-clés + échappement HTML
+                raw_text = (p.get("text") or "")
+                # Échapper d'abord, puis surligner (évite de casser les balises)
+                raw_escaped = raw_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                highlighted = highlight_keywords(raw_escaped, themes)
+
+                # Score avec indicateur visuel
+                score_stars = "●" * min(score // 4 + 1, 5)
 
                 st.markdown(f"""
-                <div class="extrait-card {border_css.get(dom,'') }">
-                  <div class="meta">
-                    {art} {themes_badges}
-                    <span class="score-pill">Score {score}</span>
+                <div class="extrait-card {th_cls.get(dom, '')}">
+                  <div class="ec-header">
+                    {art_html}
+                    {badges_html}
+                    <span class="ec-score">Score <span>{score}</span> {score_stars}</span>
                   </div>
-                  <blockquote>{text_esc}</blockquote>
+                  <div class="ec-body">
+                    <div class="ec-text-wrap">
+                      <p class="ec-text" id="ec-{card_id}">{highlighted}</p>
+                      <button class="ec-toggle" onclick="toggleExtrait(this)">▼ Voir tout</button>
+                    </div>
+                  </div>
                 </div>
                 """, unsafe_allow_html=True)
                 passages_affiches += 1
