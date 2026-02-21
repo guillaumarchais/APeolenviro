@@ -83,7 +83,7 @@ THEMES = {
             "arrêté loi sur l'eau", "autorisation loi sur l'eau",
             "coefficient d'humidité", "hydromorphie",
             "compensation zones humides", "recréation zone humide",
-            "SDAGE", "SAGE", "masse d'eau",
+            "SDAGE", "masse d'eau",
         ],
         "weak": [
             "milieu aquatique", "biodiversité", "flore", "végétation",
