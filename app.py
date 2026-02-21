@@ -370,17 +370,56 @@ h2, h3 {
 }
 
 /* ══════════════════════════════════════════════════
-   JAVASCRIPT — expand/collapse des extraits
+   EXPAND / COLLAPSE — mécanisme CSS pur via <details>
+   Le JS de Streamlit est bloqué par le navigateur ;
+   on utilise l'élément natif HTML5 <details>/<summary>
+   qui fonctionne sans aucun script.
    ══════════════════════════════════════════════════ */
-</style>
 
-<script>
-function toggleExtrait(btn) {
-  const txt = btn.previousElementSibling;
-  const expanded = txt.classList.toggle('expanded');
-  btn.textContent = expanded ? '▲ Réduire' : '▼ Voir tout';
+/* Conteneur dépliable */
+.ec-details {
+  margin: 0;
+  padding: 0;
 }
-</script>
+
+/* Le texte tronqué à 5 lignes est dans le <summary> */
+.ec-details summary {
+  list-style: none;        /* masquer le triangle natif */
+  cursor: pointer;
+  outline: none;
+}
+.ec-details summary::-webkit-details-marker { display: none; }
+
+/* Texte limité à 5 lignes quand replié */
+.ec-details:not([open]) .ec-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Texte complet quand déplié */
+.ec-details[open] .ec-text {
+  display: block;
+  overflow: visible;
+}
+
+/* Bouton textuel sous le texte */
+.ec-details summary .ec-toggle-label {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--vert-mid);
+  text-decoration: none;
+}
+.ec-details summary .ec-toggle-label::after {
+  content: "▼ Voir tout";
+}
+.ec-details[open] summary .ec-toggle-label::after {
+  content: "▲ Réduire";
+}
+</style>
 """, unsafe_allow_html=True)
 
 # ── Imports après configuration ────────────────────────────────────────────────
@@ -665,13 +704,10 @@ if st.session_state.analysed and st.session_state.results:
             return result
 
         # ── Rendu des extraits ────────────────────────────────────────────────
-        # IMPORTANT : on construit tout le HTML d'un document en une seule
-        # chaîne Python et on l'émet en UN SEUL st.markdown() par document.
-        # Émettre plusieurs st.markdown() successifs fait que Streamlit
-        # re-parse chaque fragment via son moteur Markdown, ce qui échappe
-        # les guillemets dans les attributs HTML et fait fuir le code brut
-        # dans le texte affiché.
-        card_id           = 0
+        # Architecture hybride :
+        #   - En-tête de document + bandeau badges/score → HTML via st.markdown()
+        #   - Texte de l'extrait → st.expander() natif Streamlit (seul moyen
+        #     fiable d'avoir un vrai expand/collapse, le JS étant bloqué)
         passages_affiches = 0
 
         for doc in results_ok:
@@ -685,32 +721,31 @@ if st.session_state.analysed and st.session_state.results:
             if not doc_passages:
                 continue
 
-            # On accumule tout le HTML du document dans une liste de fragments
-            html_parts = []
-
             # En-tête du document
             date_str = (
                 "{}/{}".format(doc.get("month", "?"), doc.get("year", "?"))
                 if doc.get("year") else "date inconnue"
             )
-            titre = (doc.get("text") or doc.get("filename") or "")[:90]
-            titre = titre.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            region = (doc.get("region") or "").replace("&", "&amp;")
-
-            html_parts.append(
+            titre  = (doc.get("text") or doc.get("filename") or "")[:90]
+            region = (doc.get("region") or "")
+            st.markdown(
                 '<div class="doc-header">'
                 '<span class="doc-title">&#128196; {t}</span>'
                 '<span class="doc-meta">{r} &middot; {d}</span>'
-                '</div>'.format(t=titre, r=region, d=date_str)
+                '</div>'.format(
+                    t=titre.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"),
+                    r=region,
+                    d=date_str,
+                ),
+                unsafe_allow_html=True,
             )
 
             for p in doc_passages[:15]:
                 dom    = p.get("dominant_theme", "")
                 themes = p.get("themes", {})
                 score  = themes.get(dom, 0)
-                card_id += 1
 
-                # Badges thèmes
+                # ── Bandeau badges + score (HTML) ────────────────────────────
                 badges_html = "".join(
                     '<span class="ec-badge {cls}">{ico} {lbl}</span> '.format(
                         cls=badge_cls.get(th, ""),
@@ -719,56 +754,130 @@ if st.session_state.analysed and st.session_state.results:
                     )
                     for th in themes
                 )
-
-                # Référence article
                 art_html = (
-                    '<span class="ec-art">{}</span>'.format(
-                        p["article_ref"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                    '<span class="ec-art">{}</span> '.format(
+                        p["article_ref"]
+                        .replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
                     )
                     if p.get("article_ref") else ""
                 )
-
-                # Texte : échapper puis surligner les mots-clés
-                raw_text    = (p.get("text") or "")
-                raw_escaped = (raw_text
-                               .replace("&", "&amp;")
-                               .replace("<", "&lt;")
-                               .replace(">", "&gt;")
-                               .replace('"', "&quot;"))
-                highlighted = highlight_keywords(raw_escaped, themes)
-
-                # Score
                 score_stars = "&#9679;" * min(score // 4 + 1, 5)
 
-                # Carte complète — tout en guillemets simples côté Python
-                # pour éviter toute confusion avec les guillemets HTML
-                html_parts.append(
-                    '<div class="extrait-card {tcls}">'
-                    '<div class="ec-header">'
+                st.markdown(
+                    '<div class="ec-header" style="'
+                    'display:flex;align-items:center;gap:8px;flex-wrap:wrap;'
+                    'padding:8px 12px;background:white;'
+                    'border:1px solid #D1D5DB;border-radius:8px 8px 0 0;'
+                    'border-left:4px solid {color};margin-bottom:0;">'
                     '{art}{badges}'
-                    '<span class="ec-score">Score <span>{score}</span> {stars}</span>'
-                    '</div>'
-                    '<div class="ec-body">'
-                    '<div class="ec-text-wrap">'
-                    '<p class="ec-text" id="ec-{cid}">{text}</p>'
-                    '<button class="ec-toggle" onclick="toggleExtrait(this)">&#9660; Voir tout</button>'
-                    '</div>'
-                    '</div>'
+                    '<span class="ec-score" style="margin-left:auto;">'
+                    'Score <span style="font-weight:600;">{score}</span> {stars}'
+                    '</span>'
                     '</div>'.format(
-                        tcls=th_cls.get(dom, ""),
+                        color={"avifaune":"#1D4ED8","chiropteres":"#7C3AED",
+                               "zones_humides":"#0F766E","paysage":"#C2410C"}.get(dom,"#9CA3AF"),
                         art=art_html,
                         badges=badges_html,
                         score=score,
                         stars=score_stars,
-                        cid=card_id,
-                        text=highlighted,
-                    )
+                    ),
+                    unsafe_allow_html=True,
                 )
-                passages_affiches += 1
 
-            # Émission en un seul appel — Streamlit ne re-parse pas
-            # un bloc HTML qui commence par une balise ouvrante
-            st.markdown("\n".join(html_parts), unsafe_allow_html=True)
+                # ── Texte via st.expander (expand/collapse natif) ────────────
+                raw_text = (p.get("text") or "")
+
+                # Aperçu : 5 premières lignes affichées hors expander
+                lignes    = raw_text.splitlines()
+                apercu    = "\n".join(lignes[:5])
+                a_suite   = len(lignes) > 5
+
+                # Surlignage des mots-clés dans l'aperçu (texte brut Markdown)
+                def bold_keywords(txt: str, th_scores: dict) -> str:
+                    import re as _re
+                    if not th_scores:
+                        return txt
+                    d = max(th_scores, key=th_scores.get)
+                    for kw in sorted(THEMES[d]["strong"], key=len, reverse=True):
+                        pat = _re.compile(r'(?<!\*\*)(' + _re.escape(kw) + r')(?!\*\*)',
+                                          _re.IGNORECASE)
+                        if pat.search(txt):
+                            txt = pat.sub(r'**\1**', txt, count=3)
+                    return txt
+
+                # Conteneur avec bordure basse arrondie pour raccorder à l'en-tête
+                with st.container():
+                    st.markdown(
+                        '<div style="border:1px solid #D1D5DB;border-top:none;'
+                        'border-radius:0 0 8px 8px;padding:10px 14px 6px;'
+                        'background:white;margin-bottom:12px;">',
+                        unsafe_allow_html=True,
+                    )
+                    # Aperçu 5 lignes toujours visible
+                    st.markdown(bold_keywords(apercu, themes))
+
+                    # Ligne basse : "Voir tout" + bouton Copier côte à côte
+                    col_exp, col_copy = st.columns([4, 1])
+
+                    with col_exp:
+                        if a_suite:
+                            with st.expander("Voir tout l'extrait"):
+                                st.markdown(bold_keywords(raw_text, themes))
+
+                    with col_copy:
+                        # Bouton copier via st.components — le seul moyen d'exécuter
+                        # du JS réel dans Streamlit (navigator.clipboard.writeText)
+                        # On échappe le texte pour l'insérer dans un littéral JS
+                        texte_js = (raw_text
+                                    .replace("\\", "\\\\")
+                                    .replace("`", "\\`")
+                                    .replace("$", "\\$"))
+                        import streamlit.components.v1 as components
+                        components.html(
+                            """
+                            <style>
+                              button {
+                                width: 100%;
+                                padding: 5px 10px;
+                                font-size: 12px;
+                                font-family: 'DM Sans', sans-serif;
+                                font-weight: 600;
+                                color: #166534;
+                                background: white;
+                                border: 1.5px solid #166534;
+                                border-radius: 6px;
+                                cursor: pointer;
+                                transition: background 0.15s;
+                              }
+                              button:hover { background: #F0FDF4; }
+                              button.copied {
+                                color: white;
+                                background: #166534;
+                                border-color: #166534;
+                              }
+                            </style>
+                            <button id="btn" onclick="copyText()">📋 Copier</button>
+                            <script>
+                              function copyText() {
+                                const txt = `""" + texte_js + """`;
+                                navigator.clipboard.writeText(txt).then(function() {
+                                  const btn = document.getElementById('btn');
+                                  btn.textContent = '✓ Copié !';
+                                  btn.classList.add('copied');
+                                  setTimeout(function() {
+                                    btn.textContent = '📋 Copier';
+                                    btn.classList.remove('copied');
+                                  }, 2000);
+                                });
+                              }
+                            </script>
+                            """,
+                            height=38,
+                        )
+
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+                passages_affiches += 1
 
         if passages_affiches == 0:
             st.info("Aucun passage ne correspond aux filtres sélectionnés.")
