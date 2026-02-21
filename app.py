@@ -423,13 +423,63 @@ h2, h3 {
 """, unsafe_allow_html=True)
 
 # ── Imports après configuration ────────────────────────────────────────────────
-import os, sys, json, io, tempfile, zipfile
+import os, sys, json, io, tempfile, zipfile, subprocess
 from pathlib import Path
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(__file__))
 from core.extractor import parse_arrete_from_bytes, THEMES_FR
 from core.reporter import build_aggregation, build_summary_table, build_html_report
+
+
+# ── Générateur de rapport Word ─────────────────────────────────────────────────
+def _generate_word_report(results: list) -> bytes | None:
+    """
+    Génère un rapport Word structuré par thème à partir des résultats d'analyse.
+    Utilise le script Node.js generate_word.js (docx npm) embarqué dans l'app.
+    Retourne les bytes du .docx, ou None en cas d'erreur.
+
+    Fonctionnement :
+      1. Sérialise les résultats en JSON dans un fichier temporaire
+      2. Lance generate_word.js via Node.js avec le chemin de sortie
+      3. Lit et retourne les bytes du .docx généré
+      4. Nettoie les fichiers temporaires
+    """
+    script_path = Path(__file__).parent / "generate_word.js"
+    if not script_path.exists():
+        return None
+
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            data_path = os.path.join(tmpdir, "word_data.json")
+            out_path  = os.path.join(tmpdir, "rapport.docx")
+
+            # Préparer les données — on sérialise uniquement ce dont le script a besoin
+            region = results[0].get("region", "") if results else ""
+            payload = {
+                "region":  region,
+                "results": results,
+            }
+            with open(data_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False)
+
+            # Le script lit word_data.json depuis /tmp par défaut ;
+            # on écrase le chemin en copiant dans /tmp puis on appelle le script
+            import shutil
+            shutil.copy(data_path, "/tmp/word_data.json")
+
+            result = subprocess.run(
+                ["node", str(script_path), out_path],
+                capture_output=True, text=True, timeout=60,
+            )
+            if result.returncode != 0 or not os.path.exists(out_path):
+                return None
+
+            with open(out_path, "rb") as f:
+                return f.read()
+
+    except Exception:
+        return None
 
 # ── État de session ────────────────────────────────────────────────────────────
 if "results" not in st.session_state:
@@ -929,17 +979,17 @@ if st.session_state.analysed and st.session_state.results:
     # ════════ TAB 3 : EXPORTS ══════════════════════════════════════════════
     with tab3:
         st.markdown("### 📥 Télécharger les résultats")
-        st.markdown("Trois formats disponibles selon votre usage :")
+        st.markdown("Quatre formats disponibles selon votre usage :")
 
-        agg = build_aggregation(results_ok)
+        agg  = build_aggregation(results_ok)
         rows = build_summary_table(agg)
 
-        col_e1, col_e2, col_e3 = st.columns(3)
+        col_e1, col_e2, col_e3, col_e4 = st.columns(4)
 
-        # ── Export CSV ──
+        # ── Export CSV ──────────────────────────────────────────────────────
         with col_e1:
             st.markdown("**Tableau CSV**")
-            st.markdown("Compatible Excel / LibreOffice. Une ligne par région × mois × thème.")
+            st.markdown("Compatible Excel / LibreOffice.")
             if rows:
                 import csv, io as sio
                 buf = sio.StringIO()
@@ -951,36 +1001,56 @@ if st.session_state.analysed and st.session_state.results:
                     data=buf.getvalue().encode("utf-8-sig"),
                     file_name="synthese_arrete_eolien.csv",
                     mime="text/csv",
-                    use_container_width=True
+                    use_container_width=True,
                 )
 
-        # ── Export HTML ──
+        # ── Export HTML ─────────────────────────────────────────────────────
         with col_e2:
             st.markdown("**Rapport HTML**")
-            st.markdown("Rapport interactif navigable, avec extraits complets et filtres.")
+            st.markdown("Rapport interactif navigable.")
             html_content = build_html_report(agg, rows, results_ok)
             st.download_button(
                 "⬇️ Télécharger HTML",
                 data=html_content.encode("utf-8"),
                 file_name="rapport_arrete_eolien.html",
                 mime="text/html",
-                use_container_width=True
+                use_container_width=True,
             )
 
-        # ── Export JSON ──
+        # ── Export JSON ─────────────────────────────────────────────────────
         with col_e3:
             st.markdown("**Données JSON**")
-            st.markdown("Export brut avec tous les extraits et métadonnées pour traitement externe.")
+            st.markdown("Export brut pour traitement externe.")
             json_data = json.dumps(agg, ensure_ascii=False, indent=2)
             st.download_button(
                 "⬇️ Télécharger JSON",
                 data=json_data.encode("utf-8"),
                 file_name="synthese_arrete_eolien.json",
                 mime="application/json",
-                use_container_width=True
+                use_container_width=True,
             )
 
-        # ── Réinitialiser ──
+        # ── Export Word ─────────────────────────────────────────────────────
+        with col_e4:
+            st.markdown("**Rapport Word**")
+            st.markdown("Document structuré par thème, prêt à éditer.")
+
+            if st.button("📄 Générer le rapport Word", use_container_width=True):
+                with st.spinner("Génération du rapport Word…"):
+                    docx_bytes = _generate_word_report(results_ok)
+
+                if docx_bytes:
+                    st.download_button(
+                        "⬇️ Télécharger .docx",
+                        data=docx_bytes,
+                        file_name="rapport_arrete_eolien.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True,
+                    )
+                else:
+                    st.error("Erreur lors de la génération Word. Vérifiez que Node.js est disponible.")
+
+        # ── Réinitialiser ───────────────────────────────────────────────────
         st.markdown("---")
         if st.button("🗑️ Effacer l'analyse et recommencer"):
             st.session_state.results = []
