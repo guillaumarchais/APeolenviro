@@ -72,7 +72,7 @@ THEMES = {
         "strong": [
             "zone humide", "zones humides", "zone humide avérée",
             "délimitation zone humide", "inventaire zone humide",
-            "diagnostic pédologique", "diagnostic floristique zone humide",
+            "diagnostic pédologique", "diagnostic floristique",
             "habitat humide", "prairie humide", "tourbière", "marais",
             "roselière", "jonçaie", "mégaphorbiaie", "mare",
             "loi sur l'eau", "IOTA", "dossier loi sur l'eau",
