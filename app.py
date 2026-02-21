@@ -272,10 +272,27 @@ html, body, [class*="css"] {
 }
 [data-testid="stSidebar"] * { color: #E8F5E9 !important; }
 [data-testid="stSidebar"] hr { border-color: rgba(255,255,255,0.15) !important; }
+
+/* Champ de sélection — fond légèrement clair */
 [data-testid="stSidebar"] .stSelectbox > div,
 [data-testid="stSidebar"] .stMultiSelect > div {
   background: rgba(255,255,255,0.08) !important;
   border-color: rgba(255,255,255,0.2) !important;
+}
+
+/* Listes déroulantes (portail hors sidebar, fond blanc) — texte noir lisible */
+[data-baseweb="popover"] *,
+[data-baseweb="menu"] *,
+[data-baseweb="select"] [role="listbox"] *,
+ul[role="listbox"] *,
+li[role="option"] {
+  color: #111827 !important;
+  background-color: white !important;
+}
+li[role="option"]:hover,
+li[role="option"][aria-selected="true"] {
+  background-color: #F0FDF4 !important;
+  color: #166534 !important;
 }
 
 /* ══════════════════════════════════════════════════
@@ -648,7 +665,13 @@ if st.session_state.analysed and st.session_state.results:
             return result
 
         # ── Rendu des extraits ────────────────────────────────────────────────
-        card_id     = 0
+        # IMPORTANT : on construit tout le HTML d'un document en une seule
+        # chaîne Python et on l'émet en UN SEUL st.markdown() par document.
+        # Émettre plusieurs st.markdown() successifs fait que Streamlit
+        # re-parse chaque fragment via son moteur Markdown, ce qui échappe
+        # les guillemets dans les attributs HTML et fait fuir le code brut
+        # dans le texte affiché.
+        card_id           = 0
         passages_affiches = 0
 
         for doc in results_ok:
@@ -662,18 +685,24 @@ if st.session_state.analysed and st.session_state.results:
             if not doc_passages:
                 continue
 
-            # ── En-tête du document ──
+            # On accumule tout le HTML du document dans une liste de fragments
+            html_parts = []
+
+            # En-tête du document
             date_str = (
-                f"{doc.get('month','?')}/{doc.get('year','?')}"
-                if doc.get('year') else "date inconnue"
+                "{}/{}".format(doc.get("month", "?"), doc.get("year", "?"))
+                if doc.get("year") else "date inconnue"
             )
             titre = (doc.get("text") or doc.get("filename") or "")[:90]
-            st.markdown(f"""
-            <div class="doc-header">
-              <span class="doc-title">📄 {titre}</span>
-              <span class="doc-meta">{doc.get('region','')} · {date_str}</span>
-            </div>
-            """, unsafe_allow_html=True)
+            titre = titre.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            region = (doc.get("region") or "").replace("&", "&amp;")
+
+            html_parts.append(
+                '<div class="doc-header">'
+                '<span class="doc-title">&#128196; {t}</span>'
+                '<span class="doc-meta">{r} &middot; {d}</span>'
+                '</div>'.format(t=titre, r=region, d=date_str)
+            )
 
             for p in doc_passages[:15]:
                 dom    = p.get("dominant_theme", "")
@@ -681,9 +710,9 @@ if st.session_state.analysed and st.session_state.results:
                 score  = themes.get(dom, 0)
                 card_id += 1
 
-                # Badges pour tous les thèmes du passage
-                badges_html = " ".join(
-                    '<span class="ec-badge {cls}">{ico} {lbl}</span>'.format(
+                # Badges thèmes
+                badges_html = "".join(
+                    '<span class="ec-badge {cls}">{ico} {lbl}</span> '.format(
                         cls=badge_cls.get(th, ""),
                         ico=icons.get(th, ""),
                         lbl=THEMES_FR.get(th, th),
@@ -691,37 +720,55 @@ if st.session_state.analysed and st.session_state.results:
                     for th in themes
                 )
 
-                # Référence d'article
+                # Référence article
                 art_html = (
-                    f'<span class="ec-art">{p["article_ref"]}</span>'
+                    '<span class="ec-art">{}</span>'.format(
+                        p["article_ref"].replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                    )
                     if p.get("article_ref") else ""
                 )
 
-                # Texte avec surlignage des mots-clés + échappement HTML
-                raw_text = (p.get("text") or "")
-                # Échapper d'abord, puis surligner (évite de casser les balises)
-                raw_escaped = raw_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                # Texte : échapper puis surligner les mots-clés
+                raw_text    = (p.get("text") or "")
+                raw_escaped = (raw_text
+                               .replace("&", "&amp;")
+                               .replace("<", "&lt;")
+                               .replace(">", "&gt;")
+                               .replace('"', "&quot;"))
                 highlighted = highlight_keywords(raw_escaped, themes)
 
-                # Score avec indicateur visuel
-                score_stars = "●" * min(score // 4 + 1, 5)
+                # Score
+                score_stars = "&#9679;" * min(score // 4 + 1, 5)
 
-                st.markdown(f"""
-                <div class="extrait-card {th_cls.get(dom, '')}">
-                  <div class="ec-header">
-                    {art_html}
-                    {badges_html}
-                    <span class="ec-score">Score <span>{score}</span> {score_stars}</span>
-                  </div>
-                  <div class="ec-body">
-                    <div class="ec-text-wrap">
-                      <p class="ec-text" id="ec-{card_id}">{highlighted}</p>
-                      <button class="ec-toggle" onclick="toggleExtrait(this)">▼ Voir tout</button>
-                    </div>
-                  </div>
-                </div>
-                """, unsafe_allow_html=True)
+                # Carte complète — tout en guillemets simples côté Python
+                # pour éviter toute confusion avec les guillemets HTML
+                html_parts.append(
+                    '<div class="extrait-card {tcls}">'
+                    '<div class="ec-header">'
+                    '{art}{badges}'
+                    '<span class="ec-score">Score <span>{score}</span> {stars}</span>'
+                    '</div>'
+                    '<div class="ec-body">'
+                    '<div class="ec-text-wrap">'
+                    '<p class="ec-text" id="ec-{cid}">{text}</p>'
+                    '<button class="ec-toggle" onclick="toggleExtrait(this)">&#9660; Voir tout</button>'
+                    '</div>'
+                    '</div>'
+                    '</div>'.format(
+                        tcls=th_cls.get(dom, ""),
+                        art=art_html,
+                        badges=badges_html,
+                        score=score,
+                        stars=score_stars,
+                        cid=card_id,
+                        text=highlighted,
+                    )
+                )
                 passages_affiches += 1
+
+            # Émission en un seul appel — Streamlit ne re-parse pas
+            # un bloc HTML qui commence par une balise ouvrante
+            st.markdown("\n".join(html_parts), unsafe_allow_html=True)
 
         if passages_affiches == 0:
             st.info("Aucun passage ne correspond aux filtres sélectionnés.")
