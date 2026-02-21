@@ -455,12 +455,13 @@ with st.sidebar:
     region_choisie = st.selectbox(
         "Région administrative",
         options=[
+            "Autre / Non spécifiée",
             "Auvergne-Rhône-Alpes", "Bourgogne-Franche-Comté", "Bretagne",
             "Centre-Val-de-Loire", "Grand-Est", "Hauts-de-France",
             "Île-de-France", "Normandie", "Nouvelle-Aquitaine",
             "Occitanie", "Pays-de-la-Loire", "Provence-Alpes-Côte-d'Azur",
-            "Autre / Non spécifiée",
         ],
+        index=0,
         help="Associée aux PDFs que vous allez déposer."
     )
 
