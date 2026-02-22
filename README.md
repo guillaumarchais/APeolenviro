@@ -1,4 +1,4 @@
-# 🌬️ DREAL Éolien — Application Streamlit
+# 🌬️ AP Éolien Enviro — Application Streamlit
 ## Analyse automatisée des thématiques environnementales dans les arrêtés préfectoraux
 
 ---
