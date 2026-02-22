@@ -453,7 +453,7 @@ if "analysed" not in st.session_state:
 # ── En-tête ───────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="entete">
-  <h1>🌬️ DREAL Éolien · Analyse environnementale</h1>
+  <h1>🌬️ Projets éoliens autorisés — Extraction des thèmes environnementaux</h1>
   <p>Extraction automatisée des prescriptions environnementales dans les arrêtés préfectoraux éoliens</p>
 </div>
 """, unsafe_allow_html=True)
