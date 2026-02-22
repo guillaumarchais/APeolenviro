@@ -213,11 +213,13 @@ def _make_theme_section(doc: Document, theme_key: str, results: list):
             if theme_key in (p.get("themes") or {}):
                 all_passages.append({
                     **p,
-                    "_score":  p["themes"][theme_key],
-                    "_doc":    doc_result.get("text") or doc_result.get("filename") or "Document inconnu",
-                    "_region": doc_result.get("region", ""),
-                    "_date":   (f"{doc_result['month']}/{doc_result['year']}"
-                                if doc_result.get("year") else ""),
+                    "_score":      p["themes"][theme_key],
+                    "_doc":        doc_result.get("text") or doc_result.get("filename") or "Document inconnu",
+                    "_region":     doc_result.get("region", ""),
+                    "_date":       (f"{doc_result['month']}/{doc_result['year']}"
+                                   if doc_result.get("year") else ""),
+                    "type_long":   doc_result.get("type_long",  ""),
+                    "type_found":  doc_result.get("type_found", False),
                 })
     all_passages.sort(key=lambda x: x["_score"], reverse=True)
 
@@ -244,9 +246,16 @@ def _make_theme_section(doc: Document, theme_key: str, results: list):
         h2.paragraph_format.space_after  = Pt(3)
 
         meta = group["meta"]
-        if meta["_region"] or meta["_date"]:
+        info_parts = []
+        if meta.get("type_long") and meta.get("type_found"):
+            info_parts.append(meta["type_long"])
+        if meta["_region"]:
+            info_parts.append(meta["_region"])
+        if meta["_date"]:
+            info_parts.append(meta["_date"])
+        if info_parts:
             info = doc.add_paragraph()
-            r = info.add_run(" · ".join(filter(None, [meta["_region"], meta["_date"]])))
+            r = info.add_run(" · ".join(info_parts))
             r.font.italic = True
             r.font.color.rgb = _rgb("6B7280")
             r.font.size = Pt(9)
