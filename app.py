@@ -541,7 +541,7 @@ with col_demo:
 # ── Bouton d'analyse ───────────────────────────────────────────────────────────
 if uploaded_files:
     n = len(uploaded_files)
-    st.markdown(f"**{n} fichier(s) sélectionné(s)** — Cliquez sur Analyser pour lancer le traitement.")
+    st.markdown(f"**{n} fichier(s) sélectionné(s)** — Cliquez sur Analyser pour lancer le traitement, puis PATIENTEZ car le déchiffrage des scans PDF images prend quelques minutes.")
 
     if st.button(f"🔍 Analyser {n} arrêté(s)", type="primary", use_container_width=False):
         progress = st.progress(0, text="Initialisation...")
@@ -651,7 +651,7 @@ if st.session_state.analysed and st.session_state.results:
     with tab1:
         st.markdown("""
         <div class="note-methodo">
-          Les extraits ci-dessous sont classifiés automatiquement par un système de mots-clés pondérés.
+          Les extraits ci-dessous sont classifiés automatiquement par un système de mots-clés pondérés (fort ou faible).
           Chaque passage est accompagné d'un score de pertinence. Un score élevé indique une forte
           concentration de termes spécifiques à la thématique.
         </div>
