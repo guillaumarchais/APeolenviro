@@ -46,6 +46,9 @@ def build_aggregation(results: list[dict]) -> dict:
                     "score":       score,
                     "text":        (p.get("text") or "")[:600],
                     "url":         doc.get("url", ""),
+                    "type_short":  doc.get("type_short", ""),
+                    "type_long":   doc.get("type_long",  ""),
+                    "type_found":  doc.get("type_found", False),
                 })
 
     import json
@@ -58,11 +61,20 @@ def build_summary_table(agg: dict) -> list[dict]:
     for region, years in sorted(agg.items()):
         for year, months in sorted(years.items()):
             for month, themes in sorted(months.items()):
+                # Récupérer les types d'arrêtés présents dans cette cellule
+                types_set = set()
+                for plist in themes.values():
+                    for p in plist:
+                        if p.get("type_short"):
+                            types_set.add(p["type_short"])
+                types_str = ", ".join(sorted(types_set)) if types_set else "—"
+
                 row = {
-                    "Région": region,
-                    "Année":  year,
-                    "Mois":   MOIS_FR.get(month, month),
-                    "Mois_num": month,
+                    "Région":          region,
+                    "Type d'arrêté":   types_str,
+                    "Année":           year,
+                    "Mois":            MOIS_FR.get(month, month),
+                    "Mois_num":        month,
                 }
                 for th_key, th_label in THEMES_FR.items():
                     row[th_label] = len(themes.get(th_key, []))
