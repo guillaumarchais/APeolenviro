@@ -742,12 +742,29 @@ if st.session_state.analysed and st.session_state.results:
             )
             titre  = (doc.get("text") or doc.get("filename") or "")[:90]
             region = (doc.get("region") or "")
+
+            # Badge type d'arrêté
+            type_short = doc.get("type_short", "")
+            type_found = doc.get("type_found", False)
+            type_badge = ""
+            if type_short:
+                bg = "#166534" if type_found else "#6B7280"
+                type_badge = (
+                    '<span style="display:inline-block;background:{bg};color:white;'
+                    'font-size:0.7rem;font-weight:700;letter-spacing:0.04em;'
+                    'text-transform:uppercase;padding:2px 8px;border-radius:4px;'
+                    'margin-left:8px;vertical-align:middle;">{t}</span>'.format(
+                        bg=bg, t=type_short
+                    )
+                )
+
             st.markdown(
                 '<div class="doc-header">'
-                '<span class="doc-title">&#128196; {t}</span>'
+                '<span class="doc-title">&#128196; {t}{badge}</span>'
                 '<span class="doc-meta">{r} &middot; {d}</span>'
                 '</div>'.format(
                     t=titre.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"),
+                    badge=type_badge,
                     r=region,
                     d=date_str,
                 ),
