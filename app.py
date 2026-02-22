@@ -8,7 +8,7 @@ import streamlit as st
 
 # ── Configuration de la page (doit être le premier appel Streamlit) ──────────
 st.set_page_config(
-    page_title="DREAL Éolien — Analyse environnementale",
+    page_title="Projets éoliens autorisés — Extraction des thèmes environnementaux",
     page_icon="🌬️",
     layout="wide",
     initial_sidebar_state="expanded",
