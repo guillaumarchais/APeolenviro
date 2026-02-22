@@ -39,9 +39,9 @@ THEMES = {
     "avifaune": {
         "strong": [
             "avifaune", "avifaunistique", "oiseaux", "rapaces", "rapace",
-            "milan royal", "milan noir", "busard", "busards", "outarde", "cigogne",
-            "grue cendrée", "aigle", "faucon", "buse", "héron", "vautour",
-            "espèces nicheuses", "espèces migratrices", "couloir migratoire",
+            "milan royal", "milan noir", "busard", "outarde", "cigogne",
+            "grue cendrée", "aigle", "faucon", "buse", "héron",
+            "espèces nicheuses", "espèces migratoires", "couloir migratoire",
             "migration", "nidification", "effarouchement", "bridage avifaune",
             "suivi ornithologique", "ornithologique", "ornithologie",
             "liste rouge oiseaux", "directive oiseaux",
@@ -49,7 +49,9 @@ THEMES = {
             "mortalité avifaune", "collision oiseaux",
         ],
         "weak": [
-            "suivi avifaunistique", "bilan ornithologique",
+            "faune", "espèces protégées", "habitat", "natura 2000",
+            "sensibilité faunistique", "suivi faune", "bilan ornithologique",
+            "impacts sur la faune", "mesures de réduction faune",
         ],
     },
     "chiropteres": {
@@ -57,33 +59,36 @@ THEMES = {
             "chiroptère", "chiroptères", "chauve-souris", "chauves-souris",
             "pipistrelle", "noctule", "sérotine", "murin", "grand murin",
             "rhinolophe", "vespertilion", "barbastelle", "oreillard",
-            "minioptère", "molosse",
+            "minioptère", "tadaride",
             "activité chiroptérologique", "chiroptérologique",
             "gîte", "hibernation", "transit", "chasse chiroptères",
-            "bridage chiroptères", "bridage dynamique",
+            "bridage chiroptères", "bridage acoustique",
             "détection ultrasonique", "détecteur ultrasons",
-            "mortalité chiroptères",
+            "mortalité chiroptères", "directive habitats faune flore",
         ],
         "weak": [
-            "nocturnes",
+            "faune", "espèces protégées", "habitat", "natura 2000",
+            "espèces nocturnes", "suivi faune",
+            "impacts sur la faune", "mesures de réduction faune",
         ],
     },
     "zones_humides": {
         "strong": [
             "zone humide", "zones humides", "zone humide avérée",
             "délimitation zone humide", "inventaire zone humide",
-            "diagnostic pédologique", "diagnostic floristique",
+            "diagnostic pédologique", "diagnostic floristique zone humide",
             "habitat humide", "prairie humide", "tourbière", "marais",
             "roselière", "jonçaie", "mégaphorbiaie", "mare",
             "loi sur l'eau", "IOTA", "dossier loi sur l'eau",
             "arrêté loi sur l'eau", "autorisation loi sur l'eau",
             "coefficient d'humidité", "hydromorphie",
             "compensation zones humides", "recréation zone humide",
-            "SDAGE", "masse d'eau", "pédologique"
+            "SDAGE", "SAGE", "masse d'eau",
         ],
         "weak": [
-            "milieu aquatique", "flore", "végétation",
+            "milieu aquatique", "biodiversité", "flore", "végétation",
             "espèces hygrophiles", "milieux humides",
+            "impacts sur les milieux", "mesures compensatoires",
         ],
     },
     "paysage": {
@@ -92,15 +97,17 @@ THEMES = {
             "intégration paysagère", "impact paysager", "impact visuel",
             "covisibilité", "co-visibilité", "intervisibilité",
             "aire d'étude paysagère", "photomontage", "simulation visuelle",
-            "monument historique", "site classé", "site inscrit", "site patrimonial remarquable",
+            "monument historique", "site classé", "site inscrit",
+            "ZPPAUP", "AVAP", "site patrimonial remarquable",
             "ABF", "architecte des bâtiments de france",
             "éloignement visuel", "point de vue", "perception visuelle",
             "mesures paysagères", "haie bocagère", "traitement visuel",
             "balisage diurne", "balisage nocturne",
-            "couleur des éoliennes", "ombre portée", "surplomb", "saturation",
+            "couleur des éoliennes", "ombre portée",
         ],
         "weak": [
             "patrimoine", "tourisme", "cadre de vie", "riverains",
+            "aménagement du territoire", "urbanisme",
             "plan local d'urbanisme", "PLU", "SCoT",
             "charte paysagère",
         ],
@@ -598,6 +605,112 @@ def classify_passage(text: str, active_themes: list = None) -> dict:
 # PIPELINE PRINCIPAL  (bytes → dict de résultats)
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ── Types d'arrêtés ───────────────────────────────────────────────────────────
+
+# Chaque entrée : (clé_interne, libellé_court, libellé_long, patterns_regex)
+# Les patterns sont cherchés dans les 2000 premiers caractères du texte extrait
+# (titre + considérants), insensibles à la casse et aux accents.
+ARRETE_TYPES = [
+    (
+        "autorisation",
+        "Autorisation",
+        "Arrêté d'autorisation",
+        [
+            r"arrêt[eé]\s+d['']autorisation",
+            r"portant\s+autorisation",
+            r"autoris[eé]\s+(?:la soci[eé]t[eé]|l['']exploitant|l['']entreprise)",
+            r"autorisation\s+(?:d['']exploiter|environnementale|de\s+cr[eé]er)",
+            r"est\s+autoris[eé][eé]?\s+[àa]\s+(?:exploiter|cr[eé]er|construire)",
+        ],
+    ),
+    (
+        "modification",
+        "Modification",
+        "Arrêté de modification",
+        [
+            r"arrêt[eé]\s+(?:portant\s+)?modification",
+            r"modifi(?:ant|cation de)\s+l['']arrêt[eé]",
+            r"arrêt[eé]\s+complémentaire",
+        ],
+    ),
+    (
+        "abrogation",
+        "Abrogation",
+        "Arrêté d'abrogation",
+        [
+            r"arrêt[eé]\s+(?:portant\s+)?abrogation",
+            r"abroge\s+l['']arrêt[eé]",
+            r"est\s+abrog[eé]",
+        ],
+    ),
+    (
+        "mise_en_demeure",
+        "Mise en demeure",
+        "Arrêté de mise en demeure",
+        [
+            r"mise\s+en\s+demeure",
+            r"est\s+mis[eé]\s+en\s+demeure",
+        ],
+    ),
+    (
+        "consignation",
+        "Consignation",
+        "Arrêté de consignation",
+        [
+            r"arrêt[eé]\s+(?:portant\s+)?consignation",
+            r"consign(?:er|ation\s+d['']une\s+somme)",
+        ],
+    ),
+    (
+        "prescriptions_complementaires",
+        "Prescriptions complémentaires",
+        "Arrêté de prescriptions complémentaires",
+        [
+            r"prescriptions?\s+compl[eé]mentaires?",
+            r"arrêt[eé]\s+(?:fixant|portant)\s+(?:des\s+)?prescriptions?\s+compl[eé]mentaires?",
+        ],
+    ),
+]
+
+
+def detect_arrete_type(raw_text: str) -> dict:
+    """
+    Détecte le type d'arrêté à partir du texte extrait.
+    Analyse les 2000 premiers caractères (titre + considérants) pour trouver
+    les marqueurs caractéristiques de chaque type.
+
+    Retourne un dict :
+      {
+        "type_key":    "autorisation",           # clé interne
+        "type_short":  "Autorisation",           # libellé court pour badges
+        "type_long":   "Arrêté d'autorisation",  # libellé complet pour rapports
+        "type_found":  True,                     # False si non identifié
+      }
+    """
+    # Analyser uniquement le début du document (titre + considérants)
+    extrait  = raw_text[:2000]
+    extrait_norm = normalize(extrait)
+
+    for key, short, long, patterns in ARRETE_TYPES:
+        for pat in patterns:
+            # Normaliser le pattern aussi pour la comparaison sans accents
+            pat_norm = normalize(pat)
+            if re.search(pat_norm, extrait_norm, re.IGNORECASE):
+                return {
+                    "type_key":   key,
+                    "type_short": short,
+                    "type_long":  long,
+                    "type_found": True,
+                }
+
+    return {
+        "type_key":   "inconnu",
+        "type_short": "Non identifié",
+        "type_long":  "Type non identifié",
+        "type_found": False,
+    }
+
+
 def parse_arrete_from_bytes(
     pdf_bytes: bytes,
     metadata: dict,
@@ -613,7 +726,7 @@ def parse_arrete_from_bytes(
       active_themes — thèmes à analyser (tous par défaut)
 
     Retourne un dict avec : extraction_ok, error_msg, themes_found,
-    total_passages_with_themes, passages.
+    total_passages_with_themes, passages, type_key, type_short, type_long.
     """
     if active_themes is None:
         active_themes = list(THEMES_FR.keys())
@@ -628,7 +741,14 @@ def parse_arrete_from_bytes(
             "themes_found":               [],
             "total_passages_with_themes": 0,
             "passages":                   [],
+            "type_key":                   "inconnu",
+            "type_short":                 "Non identifié",
+            "type_long":                  "Type non identifié",
+            "type_found":                 False,
         }
+
+    # Détecter le type d'arrêté sur le texte brut
+    arrete_type = detect_arrete_type(raw_text)
 
     # Détecter si le texte provient d'un OCR pour activer le nettoyage adapté
     is_ocr = "OCR" in diag
@@ -650,6 +770,7 @@ def parse_arrete_from_bytes(
 
     return {
         **metadata,
+        **arrete_type,
         "extraction_ok":              True,
         "error_msg":                  diag,
         "themes_found":               list({th for p in passages for th in p["themes"]}),
