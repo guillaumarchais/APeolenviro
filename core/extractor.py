@@ -86,9 +86,8 @@ THEMES = {
             "SDAGE", "SAGE", "masse d'eau",
         ],
         "weak": [
-            "milieu aquatique", "biodiversité", "flore", "végétation",
+            "milieu aquatique", "flore", "végétation",
             "espèces hygrophiles", "milieux humides",
-            "impacts sur les milieux", "mesures compensatoires",
         ],
     },
     "paysage": {
