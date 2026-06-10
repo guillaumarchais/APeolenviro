@@ -645,7 +645,12 @@ if st.session_state.analysed and st.session_state.results:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Onglets principaux ────────────────────────────────────────────────
-    tab1, tab2, tab3 = st.tabs(["📖 Extraits par thème", "📋 Tableau de synthèse", "📥 Exports"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📖 Extraits par thème",
+        "📋 Tableau de synthèse",
+        "📥 Exports",
+        "📄 Texte complet",
+    ])
 
     # ════════ TAB 1 : EXTRAITS ════════════════════════════════════════════
     with tab1:
@@ -1037,3 +1042,175 @@ if st.session_state.analysed and st.session_state.results:
             st.session_state.results = []
             st.session_state.analysed = False
             st.rerun()
+
+    # ════════ TAB 4 : TEXTE COMPLET ════════════════════════════════════════════
+    with tab4:
+        st.markdown("### 📄 Texte complet extrait")
+
+        # Construire la liste des documents avec Markdown disponible
+        docs_with_md = [
+            d for d in results_ok
+            if d.get("raw_markdown") and d["raw_markdown"].strip()
+        ]
+        docs_plain = [
+            d for d in results_ok
+            if d.get("extraction_ok") and not d.get("raw_markdown")
+        ]
+
+        if not results_ok:
+            st.info("Aucun document analysé.")
+
+        elif not docs_with_md and not docs_plain:
+            st.warning("Aucun texte extrait disponible.")
+
+        else:
+            # ── Note de contexte ──────────────────────────────────────────────
+            n_md    = len(docs_with_md)
+            n_plain = len(docs_plain)
+            note_parts = []
+            if n_md:
+                note_parts.append(
+                    f"**{n_md}** document(s) en Markdown structuré (pymupdf4llm)"
+                )
+            if n_plain:
+                note_parts.append(
+                    f"**{n_plain}** document(s) en texte brut (pdfplumber/pypdf/OCR)"
+                )
+            st.markdown(
+                '<div class="note-methodo">'
+                + " · ".join(note_parts)
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+            # ── Sélecteur de document ─────────────────────────────────────────
+            all_docs = docs_with_md + docs_plain
+            doc_labels = [
+                "{} {}{}".format(
+                    "📝" if d.get("raw_markdown") else "📃",
+                    (d.get("text") or d.get("filename") or "Document")[:70],
+                    " — " + d.get("region", "") if d.get("region") else "",
+                )
+                for d in all_docs
+            ]
+
+            selected_idx = st.selectbox(
+                "Sélectionner un document",
+                range(len(all_docs)),
+                format_func=lambda i: doc_labels[i],
+            )
+            doc = all_docs[selected_idx]
+
+            # ── Métadonnées du document ───────────────────────────────────────
+            meta_col1, meta_col2, meta_col3 = st.columns(3)
+            with meta_col1:
+                st.metric("Type", doc.get("type_short", "—"))
+            with meta_col2:
+                st.metric("Région", doc.get("region", "—"))
+            with meta_col3:
+                date_str = (
+                    "{}/{}".format(doc.get("month", "?"), doc.get("year", "?"))
+                    if doc.get("year") else "—"
+                )
+                st.metric("Date", date_str)
+
+            st.markdown("---")
+
+            # ── Affichage du contenu ──────────────────────────────────────────
+            raw_md = doc.get("raw_markdown", "")
+
+            if raw_md:
+                # ── Mode Markdown rendu ──
+                view_mode = st.radio(
+                    "Mode d'affichage",
+                    ["Rendu (Markdown)", "Texte brut Markdown"],
+                    horizontal=True,
+                )
+
+                # Bouton copier le texte complet
+                col_dl, col_copy = st.columns([3, 1])
+                with col_dl:
+                    st.download_button(
+                        "⬇️ Télécharger le Markdown (.md)",
+                        data=raw_md.encode("utf-8"),
+                        file_name=(
+                            (doc.get("filename") or "arrete").replace(".pdf", "") + ".md"
+                        ),
+                        mime="text/markdown",
+                    )
+                with col_copy:
+                    texte_js = (
+                        raw_md
+                        .replace("\\", "\\\\")
+                        .replace("`", "\\`")
+                        .replace("$", "\\$")
+                    )
+                    import streamlit.components.v1 as _components
+                    _components.html(
+                        """
+                        <style>
+                          button {
+                            width:100%;padding:5px 10px;font-size:12px;
+                            font-family:'DM Sans',sans-serif;font-weight:600;
+                            color:#166534;background:white;
+                            border:1.5px solid #166534;border-radius:6px;cursor:pointer;
+                          }
+                          button:hover{background:#F0FDF4;}
+                          button.copied{color:white;background:#166534;}
+                        </style>
+                        <button id="btn" onclick="copyText()">📋 Copier tout</button>
+                        <script>
+                          function copyText(){
+                            navigator.clipboard.writeText(`""" + texte_js + """`).then(function(){
+                              var b=document.getElementById('btn');
+                              b.textContent='✓ Copié !';b.classList.add('copied');
+                              setTimeout(function(){b.textContent='📋 Copier tout';b.classList.remove('copied');},2000);
+                            });
+                          }
+                        </script>
+                        """,
+                        height=38,
+                    )
+
+                st.markdown("")  # espacement
+
+                if view_mode == "Rendu (Markdown)":
+                    # Affichage rendu dans un conteneur scrollable
+                    st.markdown(
+                        '<div style="background:white;border:1px solid #D1D5DB;'
+                        'border-radius:8px;padding:1.5rem 2rem;'
+                        'max-height:70vh;overflow-y:auto;'
+                        'font-family:\'DM Sans\',sans-serif;font-size:0.9rem;'
+                        'line-height:1.75;color:#111827;">',
+                        unsafe_allow_html=True,
+                    )
+                    st.markdown(raw_md)
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                else:
+                    # Texte brut dans une zone de code
+                    st.code(raw_md, language=None)
+
+            else:
+                # Document extrait sans pymupdf4llm — afficher le texte brut
+                # reconstruit depuis les passages
+                plain_text = "\n\n".join(
+                    "[ {} ]\n{}".format(
+                        p.get("article_ref") or "passage",
+                        p.get("text", ""),
+                    )
+                    for p in doc.get("passages", [])
+                )
+                if plain_text:
+                    st.caption(
+                        "Ce document a été extrait via pdfplumber/pypdf/OCR — "
+                        "le texte structuré Markdown n'est pas disponible. "
+                        "Les passages classifiés sont affichés ci-dessous."
+                    )
+                    st.text_area(
+                        "Texte extrait (passages thématiques)",
+                        value=plain_text,
+                        height=500,
+                    )
+                else:
+                    st.warning("Aucun texte disponible pour ce document.")
