@@ -86,8 +86,9 @@ THEMES = {
             "SDAGE", "SAGE", "masse d'eau",
         ],
         "weak": [
-            "milieu aquatique", "flore", "végétation",
+            "milieu aquatique", "biodiversité", "flore", "végétation",
             "espèces hygrophiles", "milieux humides",
+            "impacts sur les milieux", "mesures compensatoires",
         ],
     },
     "paysage": {
@@ -328,24 +329,61 @@ def extract_text_with_ocr(pdf_bytes: bytes) -> tuple[str, str]:
 # EXTRACTION DE TEXTE DEPUIS BYTES
 # ══════════════════════════════════════════════════════════════════════════════
 
-def extract_text_from_bytes(pdf_bytes: bytes) -> tuple[str, bool, str]:
+def extract_text_from_bytes(pdf_bytes: bytes) -> tuple[str, bool, str, str]:
     """
-    Tente d'extraire le texte d'un PDF en bytes. Enchaîne trois méthodes :
-      1. pdfplumber  — extracteur principal (PDFs nativement numériques)
-      2. pypdf       — fallback pour encodages non standard
-      3. OCR Tesseract — fallback automatique pour les PDFs scannés
+    Tente d'extraire le texte d'un PDF en bytes. Enchaîne quatre méthodes :
+      1. pymupdf4llm  — Markdown structuré avec OCR Tesseract intégré (meilleure qualité)
+      2. pdfplumber   — extracteur principal pour PDFs nativement numériques
+      3. pypdf        — fallback pour encodages non standard
+      4. OCR Tesseract direct — dernier recours
 
-    Retourne (texte: str, succès: bool, diagnostic: str).
-
-    Note sur le correctif curseur : on appelle systématiquement seek(0) avant
-    chaque ouverture de BytesIO, car l'objet UploadedFile de Streamlit a un
-    curseur interne qui peut déjà être en fin de flux après un premier read().
+    Retourne (texte: str, succès: bool, diagnostic: str, markdown: str).
+    Le markdown est le texte brut structuré en Markdown produit par pymupdf4llm,
+    ou une chaîne vide si pymupdf4llm n'est pas disponible ou a échoué.
+    Le texte retourné (premier élément) est toujours du texte plat pour la
+    segmentation et la classification.
     """
 
-    # ── Tentative 1 : pdfplumber ──────────────────────────────────────────────
+    raw_markdown = ""
+
+    # ── Tentative 1 : pymupdf4llm ────────────────────────────────────────────
+    # Produit un Markdown structuré (## titres, listes, paragraphes) avec OCR
+    # Tesseract intégré. Fonctionne sur les PDFs scannés ET numériques.
+    try:
+        import pymupdf4llm
+        import tempfile, pathlib
+
+        # pymupdf4llm travaille sur des fichiers — écriture temporaire minimale
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            tmp.write(pdf_bytes)
+            tmp_path = tmp.name
+
+        try:
+            md = pymupdf4llm.to_markdown(tmp_path, show_progress=False)
+        finally:
+            pathlib.Path(tmp_path).unlink(missing_ok=True)
+
+        alpha_md = sum(1 for c in md if c.isalpha())
+        if alpha_md >= 200:
+            # Dédupliquer les blocs répétés (pymupdf4llm peut dupliquer les
+            # paragraphes qui chevauchent deux zones de la page)
+            md = _deduplicate_markdown_blocks(md)
+            raw_markdown = md
+            # Convertir le Markdown en texte plat pour la segmentation
+            plain = _markdown_to_plain(md)
+            return plain, True, f"pymupdf4llm OK — {alpha_md:,} caractères Markdown", md
+
+        diag_pymupdf = f"pymupdf4llm : {alpha_md} chars (insuffisant)"
+
+    except ImportError:
+        diag_pymupdf = "pymupdf4llm non installé"
+    except Exception as e:
+        diag_pymupdf = f"pymupdf4llm exception : {e}"
+
+    # ── Tentative 2 : pdfplumber ──────────────────────────────────────────────
     try:
         buf = io.BytesIO(pdf_bytes)
-        buf.seek(0)   # ← correctif curseur
+        buf.seek(0)
 
         pages_text = []
         n_pages    = 0
@@ -360,7 +398,7 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> tuple[str, bool, str]:
         alpha_count = sum(1 for c in combined if c.isalpha())
 
         if alpha_count >= 200:
-            return combined, True, f"pdfplumber OK — {n_pages} pages, {alpha_count:,} caractères"
+            return combined, True, f"pdfplumber OK — {n_pages} pages, {alpha_count:,} caractères", ""
 
         diag_pdfplumber = (
             f"pdfplumber : {alpha_count} chars alpha / {n_pages} pages (insuffisant)"
@@ -370,12 +408,12 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> tuple[str, bool, str]:
         diag_pdfplumber = f"pdfplumber exception : {e}"
         combined        = ""
 
-    # ── Tentative 2 : pypdf ───────────────────────────────────────────────────
+    # ── Tentative 3 : pypdf ───────────────────────────────────────────────────
     try:
         import pypdf
 
         buf2 = io.BytesIO(pdf_bytes)
-        buf2.seek(0)   # ← correctif curseur
+        buf2.seek(0)
 
         reader        = pypdf.PdfReader(buf2)
         pages_text_fb = []
@@ -388,7 +426,7 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> tuple[str, bool, str]:
         alpha_fb    = sum(1 for c in combined_fb if c.isalpha())
 
         if alpha_fb >= 200:
-            return combined_fb, True, f"pypdf fallback OK — {alpha_fb:,} caractères"
+            return combined_fb, True, f"pypdf fallback OK — {alpha_fb:,} caractères", ""
 
         diag_pypdf = f"pypdf : {alpha_fb} chars alpha (insuffisant)"
 
@@ -399,23 +437,54 @@ def extract_text_from_bytes(pdf_bytes: bytes) -> tuple[str, bool, str]:
         combined_fb = ""
         diag_pypdf  = f"pypdf exception : {e}"
 
-    # ── Tentative 3 : OCR Tesseract ───────────────────────────────────────────
-    # Les deux extracteurs textuels ont échoué → PDF scanné détecté.
-    # ensure_french_tesseract() télécharge le modèle français si nécessaire.
+    # ── Tentative 4 : OCR Tesseract direct ───────────────────────────────────
     ocr_text, ocr_diag = extract_text_with_ocr(pdf_bytes)
     alpha_ocr = sum(1 for c in ocr_text if c.isalpha())
 
     if alpha_ocr >= 200:
         return ocr_text, True, (
-            f"PDF scanné → OCR automatique. "
-            f"{diag_pdfplumber} | {diag_pypdf} | {ocr_diag}"
-        )
+            f"PDF scanné → OCR Tesseract. "
+            f"{diag_pymupdf} | {diag_pdfplumber} | {diag_pypdf} | {ocr_diag}"
+        ), ""
 
-    # Aucune méthode n'a produit de texte exploitable
     return "", False, (
-        f"Échec complet. {diag_pdfplumber} | {diag_pypdf} | "
+        f"Échec complet. {diag_pymupdf} | {diag_pdfplumber} | {diag_pypdf} | "
         f"OCR : {alpha_ocr} chars ({ocr_diag})"
-    )
+    ), ""
+
+
+def _deduplicate_markdown_blocks(md: str) -> str:
+    """
+    Supprime les blocs de texte dupliqués produits par pymupdf4llm quand
+    deux zones de page se chevauchent. On conserve la première occurrence
+    de chaque paragraphe non vide.
+    """
+    seen   = set()
+    result = []
+    for block in re.split(r"\n{2,}", md):
+        key = re.sub(r"\s+", " ", block.strip()).lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        result.append(block)
+    return "\n\n".join(result)
+
+
+def _markdown_to_plain(md: str) -> str:
+    """
+    Convertit le Markdown de pymupdf4llm en texte plat pour la segmentation.
+    Conserve la structure des paragraphes et des articles (lignes ## → texte brut).
+    """
+    lines  = []
+    for line in md.splitlines():
+        # Retirer les marqueurs Markdown de titres mais garder le texte
+        line = re.sub(r"^#{1,6}\s+", "", line)
+        # Retirer les marqueurs de liste Markdown
+        line = re.sub(r"^[\-\*\+]\s+", "", line)
+        # Retirer les marqueurs de liste numérotée
+        line = re.sub(r"^\d+\.\s+", "", line)
+        lines.append(line)
+    return "\n".join(lines)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -730,7 +799,7 @@ def parse_arrete_from_bytes(
     if active_themes is None:
         active_themes = list(THEMES_FR.keys())
 
-    raw_text, ok, diag = extract_text_from_bytes(pdf_bytes)
+    raw_text, ok, diag, raw_markdown = extract_text_from_bytes(pdf_bytes)
 
     if not ok or not raw_text.strip():
         return {
@@ -740,6 +809,7 @@ def parse_arrete_from_bytes(
             "themes_found":               [],
             "total_passages_with_themes": 0,
             "passages":                   [],
+            "raw_markdown":               "",
             "type_key":                   "inconnu",
             "type_short":                 "Non identifié",
             "type_long":                  "Type non identifié",
@@ -772,6 +842,7 @@ def parse_arrete_from_bytes(
         **arrete_type,
         "extraction_ok":              True,
         "error_msg":                  diag,
+        "raw_markdown":               raw_markdown,
         "themes_found":               list({th for p in passages for th in p["themes"]}),
         "total_passages_with_themes": len(passages),
         "passages":                   passages,
